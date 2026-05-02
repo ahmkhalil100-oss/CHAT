@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Walkie Chat</title>
+
+<style>
+body{
+ margin:0;
+ font-family:Arial;
+ background:#0b141a;
+ color:#fff;
+}
+
+#home{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ height:100vh;
+}
+
+#chatPage{ display:none; height:100vh; }
+
+input{
+ padding:10px;
+ margin:5px;
+ border:none;
+ border-radius:8px;
+ width:200px;
+}
+
+button{
+ padding:10px;
+ margin:5px;
+ border:none;
+ border-radius:8px;
+ background:#25D366;
+ color:#000;
+ font-weight:bold;
+}
+
+#header{
+ background:#202c33;
+ padding:10px;
+ text-align:center;
+}
+
+#messages{
+ height:calc(100vh - 120px);
+ overflow:auto;
+ padding:10px;
+ display:flex;
+ flex-direction:column;
+}
+
+.msg{
+ max-width:70%;
+ padding:8px;
+ margin:5px;
+ border-radius:10px;
+ font-size:14px;
+}
+
+.me{
+ align-self:flex-end;
+ background:#005c4b;
+}
+
+.other{
+ align-self:flex-start;
+ background:#202c33;
+}
+
+.time{
+ font-size:10px;
+ opacity:0.7;
+}
+
+#sendBox{
+ display:flex;
+ padding:10px;
+ background:#202c33;
+}
+
+#sendBox input{
+ flex:1;
+ margin:0 5px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="home">
+<h2>💬 Chat</h2>
+
+<input id="name" placeholder="اسمك">
+<input id="room" placeholder="اكتب كود أو سيبه فاضي">
+
+<button onclick="createRoom()">إنشاء</button>
+<button onclick="joinRoom()">دخول</button>
+
+<p id="codeShow"></p>
+</div>
+
+<div id="chatPage">
+<div id="header"></div>
+
+<div id="messages"></div>
+
+<div id="sendBox">
+<input id="msg" placeholder="اكتب رسالة">
+<button onclick="sendMsg()">➤</button>
+</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCoQGwJhAaQFKbD8S7TiyjhFelDSVknwIY",
+  authDomain: "text-3da14.firebaseapp.com",
+  databaseURL: "https://text-3da14-default-rtdb.firebaseio.com/",
+  projectId: "text-3da14",
+  storageBucket: "text-3da14.firebasestorage.app",
+  messagingSenderId: "525716174257",
+  appId: "1:525716174257:web:38cbd81b462f894eab7990"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let room="", name="";
+
+// إنشاء روم
+window.createRoom = function(){
+ name = document.getElementById("name").value;
+ let inputRoom = document.getElementById("room").value;
+
+ if(!name) return alert("اكتب اسمك");
+
+ if(inputRoom){
+   room = inputRoom;
+ }else{
+   room = Math.floor(1000 + Math.random()*9000).toString();
+ }
+
+ document.getElementById("codeShow").innerText = "الكود: " + room;
+
+ document.getElementById("home").style.display="none";
+ document.getElementById("chatPage").style.display="block";
+ document.getElementById("header").innerText="Room: "+room;
+
+ listen();
+}
+
+// دخول روم
+window.joinRoom = function(){
+ name=document.getElementById("name").value;
+ room=document.getElementById("room").value;
+
+ if(!name || !room) return alert("اكتب البيانات");
+
+ document.getElementById("home").style.display="none";
+ document.getElementById("chatPage").style.display="block";
+ document.getElementById("header").innerText="Room: "+room;
+
+ listen();
+}
+
+// إرسال
+window.sendMsg = function(){
+ let text=document.getElementById("msg").value;
+ if(!text) return;
+
+ push(ref(db, "rooms/"+room), {
+  name:name,
+  text:text,
+  time:Date.now()
+ });
+
+ document.getElementById("msg").value="";
+}
+
+// استقبال
+function listen(){
+ onChildAdded(ref(db, "rooms/"+room), snap=>{
+  let d=snap.val();
+
+  let div=document.createElement("div");
+  div.className="msg "+(d.name==name?"me":"other");
+
+  let t=new Date(d.time).toLocaleTimeString();
+
+  div.innerHTML=`
+   <b>${d.name}</b><br>
+   ${d.text}<br>
+   <span class="time">${t}</span>
+  `;
+
+  document.getElementById("messages").appendChild(div);
+  document.getElementById("messages").scrollTop=999999;
+ });
+}
+</script>
+
+</body>
+</html>
