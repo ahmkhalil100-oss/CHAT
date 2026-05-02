@@ -1,106 +1,129 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chat</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat</title>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      background: #0b1f26;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #0b1f26;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
 
-    header {
-      background: #202c33;
-      color: white;
-      padding: 15px;
-      text-align: center;
-      font-weight: bold;
-    }
+/* الهيدر */
+header {
+  background: #202c33;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
+}
 
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-    }
+/* الرسائل */
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  padding-bottom: 80px;
+  display: flex;
+  flex-direction: column;
+}
 
-    .msg {
-      max-width: 70%;
-      padding: 10px;
-      margin: 5px;
-      border-radius: 10px;
-      color: white;
-      word-wrap: break-word;
-    }
+/* الرسالة */
+.msg {
+  max-width: 70%;
+  padding: 10px;
+  margin: 5px;
+  border-radius: 10px;
+  color: white;
+  word-wrap: break-word;
+}
 
-    .me {
-      align-self: flex-end;
-      background: #25d366;
-    }
+/* بتاعتي */
+.me {
+  align-self: flex-end;
+  background: #25d366;
+}
 
-    .other {
-      align-self: flex-start;
-      background: #202c33;
-    }
+/* بتاعت غيري */
+.other {
+  align-self: flex-start;
+  background: #202c33;
+}
 
-    .input-box {
-      display: flex;
-      padding: 10px;
-      background: #202c33;
-    }
+/* شريط الكتابة */
+.input-box {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  padding: 10px;
+  background: #202c33;
+  box-sizing: border-box;
+}
 
-    input {
-      flex: 1;
-      padding: 10px;
-      border-radius: 20px;
-      border: none;
-      outline: none;
-    }
+/* الانبوت */
+.input-box input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 25px;
+  border: none;
+  outline: none;
+  font-size: 16px;
+}
 
-    button {
-      margin-left: 10px;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 20px;
-      background: #25d366;
-      color: white;
-      font-weight: bold;
-    }
+/* زرار الإرسال */
+.input-box button {
+  margin-left: 10px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 25px;
+  background: #25d366;
+  color: white;
+  font-size: 18px;
+}
 
-    #start {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+/* شاشة البداية */
+#start {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
 
-    #start input {
-      margin: 10px;
-      width: 200px;
-    }
-  </style>
+#start input {
+  margin: 10px;
+  width: 200px;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+}
+</style>
 </head>
 
 <body>
 
+<!-- البداية -->
 <div id="start">
   <h2>Chat</h2>
   <input id="name" placeholder="اسمك">
   <button onclick="createRoom()">إنشاء غرفة</button>
 </div>
 
+<!-- الهيدر -->
 <header id="roomHeader" style="display:none;"></header>
 
+<!-- الرسائل -->
 <div id="messages"></div>
 
+<!-- الكتابة -->
 <div class="input-box" id="chatBox" style="display:none;">
   <input id="msgInput" placeholder="اكتب رسالة...">
   <button onclick="sendMsg()">➤</button>
@@ -111,10 +134,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com/",
-  projectId: "YOUR_PROJECT",
+  apiKey: "AIzaSyCoQGwJhAaQFKbD8S7TiyjhFelDSVknwIY",
+  authDomain: "text-3da14.firebaseapp.com",
+  databaseURL: "https://text-3da14-default-rtdb.firebaseio.com/",
+  projectId: "text-3da14",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -123,15 +146,11 @@ const db = getDatabase(app);
 let room = "";
 let name = "";
 
-// قراءة اللينك
+/* قراءة اللينك */
 const params = new URLSearchParams(window.location.search);
 const roomFromLink = params.get("room");
 
-if (roomFromLink) {
-  document.getElementById("start").style.display = "flex";
-}
-
-// إنشاء غرفة
+/* إنشاء غرفة */
 window.createRoom = function () {
   name = document.getElementById("name").value;
   if (!name) return alert("اكتب اسمك");
@@ -144,16 +163,14 @@ window.createRoom = function () {
   startChat();
 };
 
-// دخول تلقائي من لينك
+/* دخول من لينك */
 if (roomFromLink) {
-  setTimeout(() => {
-    name = prompt("اكتب اسمك");
-    room = roomFromLink;
-    startChat();
-  }, 500);
+  name = prompt("اكتب اسمك");
+  room = roomFromLink;
+  startChat();
 }
 
-// بدء الشات
+/* تشغيل الشات */
 function startChat() {
   document.getElementById("start").style.display = "none";
   document.getElementById("chatBox").style.display = "flex";
@@ -163,12 +180,11 @@ function startChat() {
   const messagesRef = ref(db, "rooms/" + room);
 
   onChildAdded(messagesRef, (data) => {
-    const msg = data.val();
-    addMsg(msg);
+    addMsg(data.val());
   });
 }
 
-// إرسال رسالة
+/* إرسال */
 window.sendMsg = function () {
   const input = document.getElementById("msgInput");
   const text = input.value;
@@ -185,18 +201,8 @@ window.sendMsg = function () {
   input.value = "";
 };
 
-// عرض الرسالة
+/* عرض */
 function addMsg(msg) {
   const div = document.createElement("div");
   div.className = "msg " + (msg.name === name ? "me" : "other");
-  div.innerText = msg.name + ": " + msg.text;
-
-  const messages = document.getElementById("messages");
-  messages.appendChild(div);
-
-  messages.scrollTop = messages.scrollHeight;
-}
-</script>
-
-</body>
-</html>
+  div.innerText = msg.name + ": " + msg
