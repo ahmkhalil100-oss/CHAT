@@ -6,54 +6,28 @@
 <title>Chat Pro</title>
 
 <style>
-body { margin:0; font-family:Arial; background:#0b1f26; }
+body {margin:0;font-family:Arial;background:#0b1f26;color:white}
 
-/* البداية */
-#start {
-  height:100vh; display:flex; justify-content:center; align-items:center;
-}
-.box {
-  width:90%; max-width:350px; background:#fff; padding:20px;
-  border-radius:20px; text-align:center;
-}
-.box input { width:100%; padding:10px; margin-top:10px; }
+/* start */
+#start{height:100vh;display:flex;justify-content:center;align-items:center}
+.box{background:white;color:black;padding:20px;border-radius:20px;width:90%;max-width:350px;text-align:center}
+.box input{width:100%;padding:10px;margin-top:10px;border-radius:10px;border:none}
 
-/* الهيدر */
-header {
-  background:#202c33; color:white; padding:10px; text-align:center;
-}
+/* chat */
+header{background:#202c33;padding:10px;text-align:center}
+#messages{height:calc(100vh - 130px);overflow:auto;padding:10px;display:flex;flex-direction:column}
+.msg{display:flex;margin:5px 0}
+.me{justify-content:flex-end}
+.other{justify-content:flex-start}
+.bubble{padding:10px;border-radius:15px;max-width:70%}
+.me .bubble{background:#25D366}
+.other .bubble{background:#222}
+.time{font-size:10px;opacity:.6;display:block;text-align:right}
 
-/* الرسائل */
-#messages {
-  height:calc(100vh - 120px);
-  overflow:auto; padding:10px;
-  display:flex; flex-direction:column;
-}
-
-.msg { display:flex; margin:5px 0; }
-.me { justify-content:flex-end; }
-.other { justify-content:flex-start; }
-
-.bubble {
-  max-width:70%; padding:10px; border-radius:15px;
-}
-.me .bubble { background:#25D366; }
-.other .bubble { background:#222; color:white; }
-
-.time { font-size:10px; opacity:.6; display:block; text-align:right; }
-
-/* الكتابة */
-.input-box {
-  position:fixed; bottom:0; width:100%; display:flex;
-  padding:10px; background:#202c33;
-}
-.input-box input {
-  flex:1; padding:10px; border-radius:20px; border:none;
-}
-.input-box button {
-  margin-left:10px; background:#25D366; border:none;
-  border-radius:50%; width:45px; height:45px; color:white;
-}
+/* input */
+.input-box{position:fixed;bottom:0;width:100%;display:flex;padding:10px;background:#202c33}
+.input-box input{flex:1;padding:10px;border-radius:20px;border:none}
+.input-box button{margin-left:10px;background:#25D366;border:none;border-radius:50%;width:45px;height:45px;color:white}
 </style>
 </head>
 
@@ -64,7 +38,9 @@ header {
     <h2>Chat</h2>
     <input id="name" placeholder="اسمك">
     <input type="file" id="avatarInput">
+    <input id="roomInput" placeholder="كود الغرفة (اختياري)">
     <button id="createBtn">إنشاء غرفة</button>
+    <button id="joinBtn">دخول برمز</button>
   </div>
 </div>
 
@@ -86,7 +62,6 @@ import {
   set, onDisconnect, onValue, update
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-/* Firebase */
 const app = initializeApp({
   apiKey:"AIzaSyCoQGwJhAaQFKbD8S7TiyjhFelDSVknwIY",
   authDomain:"text-3da14.firebaseapp.com",
@@ -96,47 +71,59 @@ const app = initializeApp({
 const db = getDatabase(app);
 
 /* عناصر */
-const startDiv = document.getElementById("start");
-const chatBox = document.getElementById("chatBox");
-const header = document.getElementById("header");
-const messages = document.getElementById("messages");
-const msgInput = document.getElementById("msgInput");
-const nameInput = document.getElementById("name");
-const createBtn = document.getElementById("createBtn");
-const sendBtn = document.getElementById("sendBtn");
-const avatarInput = document.getElementById("avatarInput");
+const startDiv=document.getElementById("start");
+const chatBox=document.getElementById("chatBox");
+const header=document.getElementById("header");
+const messages=document.getElementById("messages");
+const msgInput=document.getElementById("msgInput");
+const nameInput=document.getElementById("name");
+const avatarInput=document.getElementById("avatarInput");
+const roomInput=document.getElementById("roomInput");
+const createBtn=document.getElementById("createBtn");
+const joinBtn=document.getElementById("joinBtn");
+const sendBtn=document.getElementById("sendBtn");
 
-/* متغيرات */
-let room="", name="", avatar="";
+/* بيانات */
+let room="",name="",avatar="";
 
 /* صورة */
-avatarInput.onchange = e=>{
-  const reader = new FileReader();
-  reader.onload = ()=> avatar = reader.result;
-  reader.readAsDataURL(e.target.files[0]);
+avatarInput.onchange=e=>{
+  const r=new FileReader();
+  r.onload=()=>avatar=r.result;
+  r.readAsDataURL(e.target.files[0]);
 };
 
-/* إنشاء غرفة */
-createBtn.onclick = ()=>{
-  name = nameInput.value;
-  if(!name) return alert("اكتب اسمك");
+/* إنشاء */
+createBtn.onclick=()=>{
+  name=nameInput.value;
+  if(!name)return alert("اكتب اسمك");
+  if(!avatar)return alert("اختار صورة");
 
-  room = Math.floor(Math.random()*10000);
+  room=Math.floor(Math.random()*10000);
 
-  const link = location.origin + location.pathname + "?room=" + room;
-
+  const link=location.origin+location.pathname+"?room="+room;
   navigator.clipboard.writeText(link).catch(()=>{});
   alert("تم نسخ لينك الدعوة 🔥");
 
   startChat();
 };
 
-/* دخول من لينك */
-const params = new URLSearchParams(location.search);
-if(params.get("room")){
-  room = params.get("room");
-  name = prompt("اكتب اسمك");
+/* دخول برمز */
+joinBtn.onclick=()=>{
+  name=nameInput.value;
+  if(!name)return alert("اكتب اسمك");
+  if(!avatar)return alert("اختار صورة");
+  if(!roomInput.value)return alert("اكتب الكود");
+
+  room=roomInput.value;
   startChat();
+};
+
+/* دخول من لينك */
+const params=new URLSearchParams(location.search);
+if(params.get("room")){
+  room=params.get("room");
+  alert("اكتب اسمك واختار صورة ثم اضغط دخول برمز");
 }
 
 /* تشغيل */
@@ -145,32 +132,30 @@ function startChat(){
   chatBox.style.display="flex";
   header.style.display="block";
 
-  /* Online */
-  const statusRef = ref(db,"status/"+room+"/"+name);
-  set(statusRef,{state:"online",last:Date.now()});
-  onDisconnect(statusRef).set({state:"offline",last:Date.now()});
+  history.pushState({chat:true},"","");
+
+  /* online */
+  const s=ref(db,"status/"+room+"/"+name);
+  set(s,{state:"online",last:Date.now()});
+  onDisconnect(s).set({state:"offline",last:Date.now()});
 
   /* header */
   onValue(ref(db,"status/"+room),(snap)=>{
-    let data=snap.val(), online=[];
-    for(let u in data){
-      if(data[u].state==="online") online.push(u);
-    }
-    header.innerText = online.join(", ") || "offline";
+    let d=snap.val(),online=[];
+    for(let u in d){if(d[u].state==="online")online.push(u)}
+    header.innerText=online.join(", ")||"offline";
   });
 
   /* typing */
-  msgInput.oninput = ()=>{
+  msgInput.oninput=()=>{
     set(ref(db,"typing/"+room+"/"+name),true);
-    setTimeout(()=> set(ref(db,"typing/"+room+"/"+name),false),2000);
+    setTimeout(()=>set(ref(db,"typing/"+room+"/"+name),false),2000);
   };
 
   onValue(ref(db,"typing/"+room),(snap)=>{
     let d=snap.val();
     for(let u in d){
-      if(d[u] && u!==name){
-        header.innerText = u+" يكتب...";
-      }
+      if(d[u]&&u!==name){header.innerText=u+" يكتب...";}
     }
   });
 
@@ -178,7 +163,7 @@ function startChat(){
   onChildAdded(ref(db,"rooms/"+room),(snap)=>{
     let m=snap.val();
 
-    if(m.name!==name && !m.seen){
+    if(m.name!==name&&!m.seen){
       update(ref(db,"rooms/"+room+"/"+snap.key),{seen:true});
     }
 
@@ -186,31 +171,25 @@ function startChat(){
     div.className="msg "+(m.name===name?"me":"other");
 
     const t=new Date(m.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-    const seen = m.seen?"✔✔":"✔";
+    const seen=m.seen?"✔✔":"✔";
 
     div.innerHTML=`
-      <div style="display:flex;gap:5px;">
-        ${m.avatar?`<img src="${m.avatar}" width="30" style="border-radius:50%">`:""}
-        <div class="bubble">
-          <p>${m.text}</p>
-          <span class="time">${t} ${m.name===name?seen:""}</span>
-        </div>
+    <div style="display:flex;gap:5px;">
+      ${m.avatar?`<img src="${m.avatar}" width="30" style="border-radius:50%">`:""}
+      <div class="bubble">
+        <p>${m.text}</p>
+        <span class="time">${t} ${m.name===name?seen:""}</span>
       </div>
-    `;
+    </div>`;
 
     messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-
-    /* إشعار */
-    if(m.name!==name && Notification.permission==="granted"){
-      new Notification(m.name,{body:m.text});
-    }
+    messages.scrollTop=messages.scrollHeight;
   });
 }
 
 /* إرسال */
-sendBtn.onclick = ()=>{
-  if(!msgInput.value) return;
+sendBtn.onclick=()=>{
+  if(!msgInput.value)return;
 
   push(ref(db,"rooms/"+room),{
     name:name,
@@ -223,10 +202,13 @@ sendBtn.onclick = ()=>{
   msgInput.value="";
 };
 
-/* إشعارات */
-if(Notification.permission!=="granted"){
-  Notification.requestPermission();
-}
+/* رجوع */
+window.onpopstate=()=>{
+  startDiv.style.display="flex";
+  chatBox.style.display="none";
+  header.style.display="none";
+  messages.innerHTML="";
+};
 </script>
 
 </body>
