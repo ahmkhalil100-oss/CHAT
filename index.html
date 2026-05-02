@@ -29,7 +29,7 @@ body {
 input {
   padding: 12px;
   margin: 8px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: none;
   width: 80%;
 }
@@ -37,7 +37,7 @@ input {
 button {
   padding: 12px;
   margin: 8px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: none;
   background: #25D366;
   color: white;
@@ -48,6 +48,7 @@ button {
 #chatPage {
   display: none;
   flex-direction: column;
+  height: 100vh;
 }
 
 #messages {
@@ -59,7 +60,7 @@ button {
 .msg {
   background: #1f2c34;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: 12px;
   margin: 5px;
   max-width: 70%;
 }
@@ -69,6 +70,7 @@ button {
   margin-left: auto;
 }
 
+/* ارسال */
 #sendBox {
   display: flex;
   padding: 10px;
@@ -77,6 +79,7 @@ button {
 
 #sendBox input {
   flex: 1;
+  margin: 0;
 }
 
 </style>
@@ -93,7 +96,7 @@ button {
   <button onclick="login()">تسجيل دخول</button>
 </div>
 
-<!-- اختيار غرفة -->
+<!-- الغرف -->
 <div id="roomPage" class="page">
   <h2>ادخل الغرفة</h2>
   <input id="roomInput" placeholder="كود الغرفة">
@@ -102,9 +105,9 @@ button {
 
 <!-- الشات -->
 <div id="chatPage">
-  <div style="padding:10px;background:#111">
-    Room: <span id="roomId"></span>
-    <button onclick="logout()">خروج</button>
+  <div style="padding:10px;background:#111;display:flex;justify-content:space-between">
+    <span>Room: <span id="roomId"></span></span>
+    <button onclick="back()">رجوع</button>
   </div>
 
   <div id="messages"></div>
@@ -115,18 +118,28 @@ button {
   </div>
 </div>
 
-<!-- Firebase -->
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
+import {
+  getDatabase,
+  ref,
+  push,
+  onChildAdded
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+/* 🔥 بياناتك */
 const firebaseConfig = {
-  apiKey: "YOUR_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "YOUR_DB_URL",
-  projectId: "YOUR_ID",
+  apiKey: "AIzaSyCoQGwJhAaQFKbD8S7TiyjhFelDSVknwIY",
+  authDomain: "text-3da14.firebaseapp.com",
+  databaseURL: "https://text-3da14-default-rtdb.firebaseio.com/",
+  projectId: "text-3da14"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -134,47 +147,46 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 
 let currentRoom = "";
+let listener = null;
 
 /* صفحات */
-function show(id) {
+function show(page) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
+  document.getElementById(page).classList.add("active");
 }
 
 /* تسجيل */
-window.register = function() {
-  createUserWithEmailAndPassword(auth,
-    email.value, password.value)
-    .then(() => {
-      alert("تم إنشاء الحساب");
-    });
-}
+window.register = function () {
+  createUserWithEmailAndPassword(auth, email.value, password.value)
+    .then(() => alert("تم إنشاء الحساب"))
+    .catch(e => alert(e.message));
+};
 
 /* دخول */
-window.login = function() {
-  signInWithEmailAndPassword(auth,
-    email.value, password.value)
-    .then(() => {
-      show("roomPage");
-    });
-}
+window.login = function () {
+  signInWithEmailAndPassword(auth, email.value, password.value)
+    .then(() => show("roomPage"))
+    .catch(e => alert(e.message));
+};
 
-/* خروج */
-window.logout = function() {
-  signOut(auth);
-  location.reload();
-}
+/* رجوع */
+window.back = function () {
+  show("roomPage");
+  messages.innerHTML = "";
+};
 
 /* دخول غرفة */
-window.enterRoom = function() {
+window.enterRoom = function () {
+  if (!roomInput.value) return alert("اكتب كود");
+
   currentRoom = roomInput.value;
   document.getElementById("roomId").innerText = currentRoom;
 
-  document.getElementById("authPage").style.display = "none";
-  document.getElementById("roomPage").style.display = "none";
-  document.getElementById("chatPage").style.display = "flex";
+  show("chatPage");
 
   const messagesRef = ref(db, "rooms/" + currentRoom);
+
+  messages.innerHTML = "";
 
   onChildAdded(messagesRef, snap => {
     const msg = snap.val();
@@ -187,13 +199,14 @@ window.enterRoom = function() {
     }
 
     div.innerText = msg.text;
+
     messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
   });
-}
+};
 
 /* ارسال */
-window.sendMsg = function() {
+window.sendMsg = function () {
   if (!msgInput.value) return;
 
   push(ref(db, "rooms/" + currentRoom), {
@@ -202,7 +215,7 @@ window.sendMsg = function() {
   });
 
   msgInput.value = "";
-}
+};
 
 </script>
 
