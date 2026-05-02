@@ -18,15 +18,8 @@ header{background:#202c33;padding:10px;text-align:center}
 
 /* layout */
 .container{display:flex}
-#messages{flex:3;height:calc(100vh - 120px);overflow:auto;padding:10px;display:flex;flex-direction:column}
-#users{
-  flex:1;
-  background:#111;
-  padding:10px;
-  border-left:1px solid #333;
-  overflow:auto;
-}
-.user{padding:5px;border-bottom:1px solid #333;font-size:14px}
+#messages{flex:3;height:calc(100vh - 140px);overflow:auto;padding:10px;display:flex;flex-direction:column}
+#users{flex:1;background:#111;padding:10px;overflow:auto}
 
 /* msg */
 .msg{display:flex;margin:5px 0}
@@ -35,12 +28,12 @@ header{background:#202c33;padding:10px;text-align:center}
 .bubble{padding:10px;border-radius:15px;max-width:70%}
 .me .bubble{background:#25D366}
 .other .bubble{background:#222}
-.time{font-size:10px;opacity:.6;display:block;text-align:right}
+.time{font-size:10px;opacity:.6}
 
 /* input */
 .input-box{position:fixed;bottom:0;width:100%;display:flex;padding:10px;background:#202c33}
 .input-box input{flex:1;padding:10px;border-radius:20px;border:none}
-.input-box button{margin-left:10px;background:#25D366;border:none;border-radius:50%;width:45px;height:45px;color:white}
+.input-box button{margin-left:5px;background:#25D366;border:none;border-radius:50%;width:45px;height:45px;color:white}
 </style>
 </head>
 
@@ -67,17 +60,16 @@ header{background:#202c33;padding:10px;text-align:center}
 <div class="input-box" id="chatBox" style="display:none;">
   <input id="msgInput">
   <button id="sendBtn">➤</button>
+  <input type="file" id="imageInput" accept="image/*">
+  <button id="recBtn">🎤</button>
 </div>
 
 <script type="module">
-import {
-  initializeApp
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-import {
-  getDatabase, ref, push, onChildAdded,
-  set, onDisconnect, onValue, update
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, update } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const app = initializeApp({
   apiKey:"AIzaSyCoQGwJhAaQFKbD8S7TiyjhFelDSVknwIY",
@@ -85,7 +77,9 @@ const app = initializeApp({
   databaseURL:"https://text-3da14-default-rtdb.firebaseio.com/",
   projectId:"text-3da14"
 });
+
 const db = getDatabase(app);
+const storage = getStorage(app);
 
 /* عناصر */
 const startDiv=document.getElementById("start");
@@ -101,13 +95,14 @@ const roomInput=document.getElementById("roomInput");
 const createBtn=document.getElementById("createBtn");
 const joinBtn=document.getElementById("joinBtn");
 const sendBtn=document.getElementById("sendBtn");
+const imageInput=document.getElementById("imageInput");
+const recBtn=document.getElementById("recBtn");
 
-/* بيانات */
 let room="",name="",avatar="",fromLink=false;
 
 /* صورة */
 avatarInput.onchange=e=>{
-  const r=new FileReader();
+  let r=new FileReader();
   r.onload=()=>avatar=r.result;
   r.readAsDataURL(e.target.files[0]);
 };
@@ -124,15 +119,12 @@ if(params.get("room")){
 /* إنشاء */
 createBtn.onclick=()=>{
   name=nameInput.value;
-  if(!name)return alert("اكتب اسمك");
-  if(!avatar)return alert("اختار صورة");
+  if(!name||!avatar)return alert("اسم وصورة");
 
   room=Math.floor(Math.random()*10000);
-
-  const link=location.origin+location.pathname+"?room="+room;
-  navigator.clipboard.writeText(link).catch(()=>{});
-
-  alert("الكود: "+room+"\nتم نسخ لينك الدعوة 🔥");
+  let link=location.origin+"?room="+room;
+  navigator.clipboard.writeText(link);
+  alert("الكود: "+room);
 
   startChat();
 };
@@ -140,14 +132,12 @@ createBtn.onclick=()=>{
 /* دخول */
 joinBtn.onclick=()=>{
   name=nameInput.value;
-  if(!name)return alert("اكتب اسمك");
-  if(!avatar)return alert("اختار صورة");
+  if(!name||!avatar)return alert("اسم وصورة");
 
   if(!fromLink){
     if(!roomInput.value)return alert("اكتب الكود");
     room=roomInput.value;
   }
-
   startChat();
 };
 
@@ -157,43 +147,21 @@ function startChat(){
   chatBox.style.display="flex";
   header.style.display="block";
 
-  history.pushState({chat:true},"","");
-
-  /* status */
   const s=ref(db,"status/"+room+"/"+name);
   set(s,{state:"online"});
   onDisconnect(s).remove();
 
-  /* users list */
   onValue(ref(db,"status/"+room),(snap)=>{
-    let data=snap.val()||{};
-    usersDiv.innerHTML="<b>الأعضاء:</b><br>";
-
-    let list=[];
-    for(let u in data){
-      list.push(u);
-      usersDiv.innerHTML+=`<div class="user">🟢 ${u}</div>`;
-    }
-
-    header.innerText="Room "+room+" | "+list.length+" online";
-  });
-
-  /* typing */
-  msgInput.oninput=()=>{
-    set(ref(db,"typing/"+room+"/"+name),true);
-    setTimeout(()=>set(ref(db,"typing/"+room+"/"+name),false),2000);
-  };
-
-  onValue(ref(db,"typing/"+room),(snap)=>{
-    let d=snap.val();
+    let d=snap.val()||{};
+    usersDiv.innerHTML="الأعضاء:<br>";
+    let count=0;
     for(let u in d){
-      if(d[u]&&u!==name){
-        header.innerText=u+" يكتب...";
-      }
+      count++;
+      usersDiv.innerHTML+=`🟢 ${u}<br>`;
     }
+    header.innerText="Room "+room+" | "+count;
   });
 
-  /* رسائل */
   onChildAdded(ref(db,"rooms/"+room),(snap)=>{
     let m=snap.val();
 
@@ -201,17 +169,19 @@ function startChat(){
       update(ref(db,"rooms/"+room+"/"+snap.key),{seen:true});
     }
 
-    const div=document.createElement("div");
+    let div=document.createElement("div");
     div.className="msg "+(m.name===name?"me":"other");
 
-    const t=new Date(m.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-    const seen=m.seen?"✔✔":"✔";
+    let t=new Date(m.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+    let seen=m.seen?"✔✔":"✔";
 
     div.innerHTML=`
-    <div style="display:flex;gap:5px;">
-      ${m.avatar?`<img src="${m.avatar}" width="30" style="border-radius:50%">`:""}
+    <div>
+      ${m.avatar?`<img src="${m.avatar}" width="30">`:""}
       <div class="bubble">
-        <p>${m.text}</p>
+        <p>${m.text||""}</p>
+        ${m.image?`<img src="${m.image}" style="max-width:150px">`:""}
+        ${m.audio?`<audio controls src="${m.audio}"></audio>`:""}
         <span class="time">${t} ${m.name===name?seen:""}</span>
       </div>
     </div>`;
@@ -221,24 +191,52 @@ function startChat(){
   });
 }
 
-/* إرسال */
+/* إرسال نص */
 sendBtn.onclick=()=>{
   if(!msgInput.value)return;
 
   push(ref(db,"rooms/"+room),{
-    name:name,
-    text:msgInput.value,
-    avatar:avatar,
-    time:Date.now(),
-    seen:false
+    name,text:msgInput.value,avatar,time:Date.now(),seen:false
   });
 
   msgInput.value="";
 };
 
-/* رجوع */
-window.onpopstate=()=>{
-  location.href=location.pathname;
+/* إرسال صورة */
+imageInput.onchange=async e=>{
+  let file=e.target.files[0];
+  if(!file)return;
+
+  let r=sRef(storage,"img/"+Date.now());
+  await uploadBytes(r,file);
+  let url=await getDownloadURL(r);
+
+  push(ref(db,"rooms/"+room),{
+    name,avatar,image:url,time:Date.now()
+  });
+};
+
+/* تسجيل صوت */
+let rec;
+recBtn.onclick=async()=>{
+  let stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  rec=new MediaRecorder(stream);
+  let chunks=[];
+
+  rec.ondataavailable=e=>chunks.push(e.data);
+  rec.onstop=async()=>{
+    let blob=new Blob(chunks);
+    let r=sRef(storage,"audio/"+Date.now());
+    await uploadBytes(r,blob);
+    let url=await getDownloadURL(r);
+
+    push(ref(db,"rooms/"+room),{
+      name,avatar,audio:url,time:Date.now()
+    });
+  };
+
+  rec.start();
+  setTimeout(()=>rec.stop(),3000);
 };
 </script>
 
