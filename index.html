@@ -6,16 +6,29 @@
 <title>Chat Pro</title>
 
 <style>
-body {margin:0;font-family:Arial;background:#0b1f26;color:white}
+body{margin:0;font-family:Arial;background:#0b1f26;color:white}
 
 /* start */
 #start{height:100vh;display:flex;justify-content:center;align-items:center}
 .box{background:white;color:black;padding:20px;border-radius:20px;width:90%;max-width:350px;text-align:center}
 .box input{width:100%;padding:10px;margin-top:10px;border-radius:10px;border:none}
 
-/* chat */
+/* header */
 header{background:#202c33;padding:10px;text-align:center}
-#messages{height:calc(100vh - 130px);overflow:auto;padding:10px;display:flex;flex-direction:column}
+
+/* layout */
+.container{display:flex}
+#messages{flex:3;height:calc(100vh - 120px);overflow:auto;padding:10px;display:flex;flex-direction:column}
+#users{
+  flex:1;
+  background:#111;
+  padding:10px;
+  border-left:1px solid #333;
+  overflow:auto;
+}
+.user{padding:5px;border-bottom:1px solid #333;font-size:14px}
+
+/* msg */
 .msg{display:flex;margin:5px 0}
 .me{justify-content:flex-end}
 .other{justify-content:flex-start}
@@ -38,14 +51,18 @@ header{background:#202c33;padding:10px;text-align:center}
     <h2>Chat</h2>
     <input id="name" placeholder="اسمك">
     <input type="file" id="avatarInput">
-    <input id="roomInput" placeholder="كود الغرفة (اختياري)">
+    <input id="roomInput" placeholder="كود الغرفة">
     <button id="createBtn">إنشاء غرفة</button>
-    <button id="joinBtn">دخول برمز</button>
+    <button id="joinBtn">دخول</button>
   </div>
 </div>
 
 <header id="header" style="display:none;"></header>
-<div id="messages"></div>
+
+<div class="container">
+  <div id="messages"></div>
+  <div id="users"></div>
+</div>
 
 <div class="input-box" id="chatBox" style="display:none;">
   <input id="msgInput">
@@ -75,6 +92,8 @@ const startDiv=document.getElementById("start");
 const chatBox=document.getElementById("chatBox");
 const header=document.getElementById("header");
 const messages=document.getElementById("messages");
+const usersDiv=document.getElementById("users");
+
 const msgInput=document.getElementById("msgInput");
 const nameInput=document.getElementById("name");
 const avatarInput=document.getElementById("avatarInput");
@@ -84,7 +103,7 @@ const joinBtn=document.getElementById("joinBtn");
 const sendBtn=document.getElementById("sendBtn");
 
 /* بيانات */
-let room="",name="",avatar="";
+let room="",name="",avatar="",fromLink=false;
 
 /* صورة */
 avatarInput.onchange=e=>{
@@ -92,6 +111,15 @@ avatarInput.onchange=e=>{
   r.onload=()=>avatar=r.result;
   r.readAsDataURL(e.target.files[0]);
 };
+
+/* لينك */
+const params=new URLSearchParams(location.search);
+if(params.get("room")){
+  room=params.get("room");
+  fromLink=true;
+  roomInput.style.display="none";
+  joinBtn.innerText="دخول مباشر";
+}
 
 /* إنشاء */
 createBtn.onclick=()=>{
@@ -103,28 +131,25 @@ createBtn.onclick=()=>{
 
   const link=location.origin+location.pathname+"?room="+room;
   navigator.clipboard.writeText(link).catch(()=>{});
-  alert("تم نسخ لينك الدعوة 🔥");
+
+  alert("الكود: "+room+"\nتم نسخ لينك الدعوة 🔥");
 
   startChat();
 };
 
-/* دخول برمز */
+/* دخول */
 joinBtn.onclick=()=>{
   name=nameInput.value;
   if(!name)return alert("اكتب اسمك");
   if(!avatar)return alert("اختار صورة");
-  if(!roomInput.value)return alert("اكتب الكود");
 
-  room=roomInput.value;
+  if(!fromLink){
+    if(!roomInput.value)return alert("اكتب الكود");
+    room=roomInput.value;
+  }
+
   startChat();
 };
-
-/* دخول من لينك */
-const params=new URLSearchParams(location.search);
-if(params.get("room")){
-  room=params.get("room");
-  alert("اكتب اسمك واختار صورة ثم اضغط دخول برمز");
-}
 
 /* تشغيل */
 function startChat(){
@@ -134,16 +159,23 @@ function startChat(){
 
   history.pushState({chat:true},"","");
 
-  /* online */
+  /* status */
   const s=ref(db,"status/"+room+"/"+name);
-  set(s,{state:"online",last:Date.now()});
-  onDisconnect(s).set({state:"offline",last:Date.now()});
+  set(s,{state:"online"});
+  onDisconnect(s).remove();
 
-  /* header */
+  /* users list */
   onValue(ref(db,"status/"+room),(snap)=>{
-    let d=snap.val(),online=[];
-    for(let u in d){if(d[u].state==="online")online.push(u)}
-    header.innerText=online.join(", ")||"offline";
+    let data=snap.val()||{};
+    usersDiv.innerHTML="<b>الأعضاء:</b><br>";
+
+    let list=[];
+    for(let u in data){
+      list.push(u);
+      usersDiv.innerHTML+=`<div class="user">🟢 ${u}</div>`;
+    }
+
+    header.innerText="Room "+room+" | "+list.length+" online";
   });
 
   /* typing */
@@ -155,7 +187,9 @@ function startChat(){
   onValue(ref(db,"typing/"+room),(snap)=>{
     let d=snap.val();
     for(let u in d){
-      if(d[u]&&u!==name){header.innerText=u+" يكتب...";}
+      if(d[u]&&u!==name){
+        header.innerText=u+" يكتب...";
+      }
     }
   });
 
@@ -204,10 +238,7 @@ sendBtn.onclick=()=>{
 
 /* رجوع */
 window.onpopstate=()=>{
-  startDiv.style.display="flex";
-  chatBox.style.display="none";
-  header.style.display="none";
-  messages.innerHTML="";
+  location.href=location.pathname;
 };
 </script>
 
