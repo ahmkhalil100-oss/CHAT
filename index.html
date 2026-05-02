@@ -2,118 +2,69 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Walkie Chat</title>
+<title>Chat</title>
 
 <style>
-body{
- margin:0;
- font-family:Arial;
- background:#0b141a;
- color:#fff;
+body {
+  margin:0;
+  font-family: Arial;
+  background:#0b1c26;
+  color:white;
 }
 
-#home{
- display:flex;
- flex-direction:column;
- align-items:center;
- justify-content:center;
- height:100vh;
+#login, #chat {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
 }
 
-#chatPage{ display:none; height:100vh; }
-
-input{
- padding:10px;
- margin:5px;
- border:none;
- border-radius:8px;
- width:200px;
+input {
+  padding:10px;
+  margin:5px;
+  width:200px;
 }
 
-button{
- padding:10px;
- margin:5px;
- border:none;
- border-radius:8px;
- background:#25D366;
- color:#000;
- font-weight:bold;
+button {
+  padding:10px;
+  margin:5px;
+  background:#2ecc71;
+  border:none;
+  color:white;
+  cursor:pointer;
 }
 
-#header{
- background:#202c33;
- padding:10px;
- text-align:center;
+#messages {
+  height:70vh;
+  overflow-y:auto;
+  width:90%;
 }
 
-#messages{
- height:calc(100vh - 120px);
- overflow:auto;
- padding:10px;
- display:flex;
- flex-direction:column;
-}
-
-.msg{
- max-width:70%;
- padding:8px;
- margin:5px;
- border-radius:10px;
- font-size:14px;
-}
-
-.me{
- align-self:flex-end;
- background:#005c4b;
-}
-
-.other{
- align-self:flex-start;
- background:#202c33;
-}
-
-.time{
- font-size:10px;
- opacity:0.7;
-}
-
-#sendBox{
- display:flex;
- padding:10px;
- background:#202c33;
-}
-
-#sendBox input{
- flex:1;
- margin:0 5px;
+.msg {
+  background:#1e3a4c;
+  margin:5px;
+  padding:10px;
+  border-radius:10px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="home">
-<h2>💬 Chat</h2>
-
-<input id="name" placeholder="اسمك">
-<input id="room" placeholder="اكتب كود أو سيبه فاضي">
-
-<button onclick="createRoom()">إنشاء</button>
-<button onclick="joinRoom()">دخول</button>
-
-<p id="codeShow"></p>
+<div id="login">
+  <h2>💬 Chat</h2>
+  <input id="name" placeholder="اسمك">
+  <input id="room" placeholder="كود الغرفة">
+  <button onclick="createRoom()">إنشاء</button>
+  <button onclick="joinRoom()">دخول</button>
 </div>
 
-<div id="chatPage">
-<div id="header"></div>
-
-<div id="messages"></div>
-
-<div id="sendBox">
-<input id="msg" placeholder="اكتب رسالة">
-<button onclick="sendMsg()">➤</button>
-</div>
+<div id="chat" style="display:none;">
+  <h3 id="roomTitle"></h3>
+  <div id="messages"></div>
+  <input id="msg" placeholder="اكتب رسالة">
+  <button onclick="sendMsg()">إرسال</button>
 </div>
 
 <script type="module">
@@ -125,7 +76,7 @@ const firebaseConfig = {
   authDomain: "text-3da14.firebaseapp.com",
   databaseURL: "https://text-3da14-default-rtdb.firebaseio.com/",
   projectId: "text-3da14",
-  storageBucket: "text-3da14.firebasestorage.app",
+  storageBucket: "text-3da14.appspot.com",
   messagingSenderId: "525716174257",
   appId: "1:525716174257:web:38cbd81b462f894eab7990"
 };
@@ -133,77 +84,47 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-let room="", name="";
+let username = "";
+let room = "";
 
-// إنشاء روم
-window.createRoom = function(){
- name = document.getElementById("name").value;
- let inputRoom = document.getElementById("room").value;
-
- if(!name) return alert("اكتب اسمك");
-
- if(inputRoom){
-   room = inputRoom;
- }else{
-   room = Math.floor(1000 + Math.random()*9000).toString();
- }
-
- document.getElementById("codeShow").innerText = "الكود: " + room;
-
- document.getElementById("home").style.display="none";
- document.getElementById("chatPage").style.display="block";
- document.getElementById("header").innerText="Room: "+room;
-
- listen();
+window.createRoom = function() {
+  username = document.getElementById("name").value;
+  room = Math.floor(Math.random()*10000).toString();
+  startChat();
 }
 
-// دخول روم
-window.joinRoom = function(){
- name=document.getElementById("name").value;
- room=document.getElementById("room").value;
-
- if(!name || !room) return alert("اكتب البيانات");
-
- document.getElementById("home").style.display="none";
- document.getElementById("chatPage").style.display="block";
- document.getElementById("header").innerText="Room: "+room;
-
- listen();
+window.joinRoom = function() {
+  username = document.getElementById("name").value;
+  room = document.getElementById("room").value;
+  startChat();
 }
 
-// إرسال
+function startChat(){
+  document.getElementById("login").style.display = "none";
+  document.getElementById("chat").style.display = "flex";
+  document.getElementById("roomTitle").innerText = "Room: " + room;
+
+  const chatRef = ref(db, "rooms/" + room);
+
+  onChildAdded(chatRef, (data) => {
+    const msg = data.val();
+    const div = document.createElement("div");
+    div.className = "msg";
+    div.innerText = msg.name + ": " + msg.text;
+    document.getElementById("messages").appendChild(div);
+  });
+}
+
 window.sendMsg = function(){
- let text=document.getElementById("msg").value;
- if(!text) return;
+  const text = document.getElementById("msg").value;
+  if(text === "") return;
 
- push(ref(db, "rooms/"+room), {
-  name:name,
-  text:text,
-  time:Date.now()
- });
+  push(ref(db, "rooms/" + room), {
+    name: username,
+    text: text
+  });
 
- document.getElementById("msg").value="";
-}
-
-// استقبال
-function listen(){
- onChildAdded(ref(db, "rooms/"+room), snap=>{
-  let d=snap.val();
-
-  let div=document.createElement("div");
-  div.className="msg "+(d.name==name?"me":"other");
-
-  let t=new Date(d.time).toLocaleTimeString();
-
-  div.innerHTML=`
-   <b>${d.name}</b><br>
-   ${d.text}<br>
-   <span class="time">${t}</span>
-  `;
-
-  document.getElementById("messages").appendChild(div);
-  document.getElementById("messages").scrollTop=999999;
- });
+  document.getElementById("msg").value = "";
 }
 </script>
 
