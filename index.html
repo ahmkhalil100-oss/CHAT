@@ -1,168 +1,200 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat</title>
 
-<style>
-body {
-  margin:0;
-  font-family: Arial;
-  background:#0b1c26;
-  color:white;
-}
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #0b1f26;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
 
-#login, #chat {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  height:100vh;
-  padding:10px;
-}
+    header {
+      background: #202c33;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+    }
 
-input {
-  padding:12px;
-  margin:5px;
-  width:90%;
-  max-width:300px;
-  border-radius:10px;
-  border:none;
-}
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
 
-button {
-  padding:12px;
-  margin:5px;
-  width:90%;
-  max-width:300px;
-  background:#25D366;
-  border:none;
-  color:white;
-  border-radius:10px;
-}
+    .msg {
+      max-width: 70%;
+      padding: 10px;
+      margin: 5px;
+      border-radius: 10px;
+      color: white;
+      word-wrap: break-word;
+    }
 
-#messages {
-  width:100%;
-  height:65vh;
-  overflow-y:auto;
-  display:flex;
-  flex-direction:column;
-}
+    .me {
+      align-self: flex-end;
+      background: #25d366;
+    }
 
-.msg {
-  padding:10px;
-  margin:5px;
-  border-radius:10px;
-  max-width:70%;
-  word-wrap:break-word;
-}
+    .other {
+      align-self: flex-start;
+      background: #202c33;
+    }
 
-.me {
-  background:#25D366;
-  align-self:flex-end;
-}
+    .input-box {
+      display: flex;
+      padding: 10px;
+      background: #202c33;
+    }
 
-.other {
-  background:#1e3a4c;
-  align-self:flex-start;
-}
+    input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 20px;
+      border: none;
+      outline: none;
+    }
 
-#sendBox {
-  display:flex;
-  width:100%;
-}
+    button {
+      margin-left: 10px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 20px;
+      background: #25d366;
+      color: white;
+      font-weight: bold;
+    }
 
-#msg {
-  flex:1;
-}
-</style>
+    #start {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    #start input {
+      margin: 10px;
+      width: 200px;
+    }
+  </style>
 </head>
 
 <body>
 
-<div id="login">
-  <h2>💬 Chat</h2>
+<div id="start">
+  <h2>Chat</h2>
   <input id="name" placeholder="اسمك">
-  <input id="room" placeholder="كود الغرفة">
-  <button onclick="createRoom()">إنشاء</button>
-  <button onclick="joinRoom()">دخول</button>
+  <button onclick="createRoom()">إنشاء غرفة</button>
 </div>
 
-<div id="chat" style="display:none;">
-  <h3 id="roomTitle"></h3>
+<header id="roomHeader" style="display:none;"></header>
 
-  <div id="messages"></div>
+<div id="messages"></div>
 
-  <div id="sendBox">
-    <input id="msg" placeholder="اكتب رسالة">
-    <button onclick="sendMsg()">➤</button>
-  </div>
+<div class="input-box" id="chatBox" style="display:none;">
+  <input id="msgInput" placeholder="اكتب رسالة...">
+  <button onclick="sendMsg()">➤</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-const app = initializeApp({
-  apiKey: "AIzaSyCoQGwJhAaQFKbD8S7TiyjhFelDSVknwIY",
-  authDomain: "text-3da14.firebaseapp.com",
-  databaseURL: "https://text-3da14-default-rtdb.firebaseio.com/",
-  projectId: "text-3da14"
-});
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com/",
+  projectId: "YOUR_PROJECT",
+};
 
+const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-let username = "";
 let room = "";
+let name = "";
 
-window.createRoom = function() {
-  username = document.getElementById("name").value;
-  room = Math.floor(Math.random()*10000).toString();
-  start();
+// قراءة اللينك
+const params = new URLSearchParams(window.location.search);
+const roomFromLink = params.get("room");
+
+if (roomFromLink) {
+  document.getElementById("start").style.display = "flex";
 }
 
-window.joinRoom = function() {
-  username = document.getElementById("name").value;
-  room = document.getElementById("room").value;
-  start();
+// إنشاء غرفة
+window.createRoom = function () {
+  name = document.getElementById("name").value;
+  if (!name) return alert("اكتب اسمك");
+
+  room = Math.floor(Math.random() * 10000);
+
+  const link = `${window.location.origin}${window.location.pathname}?room=${room}`;
+  alert("لينك الدعوة:\n" + link);
+
+  startChat();
+};
+
+// دخول تلقائي من لينك
+if (roomFromLink) {
+  setTimeout(() => {
+    name = prompt("اكتب اسمك");
+    room = roomFromLink;
+    startChat();
+  }, 500);
 }
 
-function start(){
-  document.getElementById("login").style.display="none";
-  document.getElementById("chat").style.display="flex";
-  document.getElementById("roomTitle").innerText="Room: "+room;
+// بدء الشات
+function startChat() {
+  document.getElementById("start").style.display = "none";
+  document.getElementById("chatBox").style.display = "flex";
+  document.getElementById("roomHeader").style.display = "block";
+  document.getElementById("roomHeader").innerText = "Room: " + room;
 
-  const r = ref(db, "rooms/"+room);
+  const messagesRef = ref(db, "rooms/" + room);
 
-  onChildAdded(r, (d)=>{
-    let m = d.val();
-
-    let div = document.createElement("div");
-    div.classList.add("msg");
-
-    if(m.name === username){
-      div.classList.add("me");
-    } else {
-      div.classList.add("other");
-    }
-
-    div.innerText = m.name + ": " + m.text;
-
-    document.getElementById("messages").appendChild(div);
+  onChildAdded(messagesRef, (data) => {
+    const msg = data.val();
+    addMsg(msg);
   });
 }
 
-window.sendMsg = function(){
-  let t = document.getElementById("msg").value;
-  if(t==="") return;
+// إرسال رسالة
+window.sendMsg = function () {
+  const input = document.getElementById("msgInput");
+  const text = input.value;
 
-  push(ref(db, "rooms/"+room), {
-    name: username,
-    text: t
+  if (!text) return;
+
+  const messagesRef = ref(db, "rooms/" + room);
+
+  push(messagesRef, {
+    name: name,
+    text: text
   });
 
-  document.getElementById("msg").value="";
+  input.value = "";
+};
+
+// عرض الرسالة
+function addMsg(msg) {
+  const div = document.createElement("div");
+  div.className = "msg " + (msg.name === name ? "me" : "other");
+  div.innerText = msg.name + ": " + msg.text;
+
+  const messages = document.getElementById("messages");
+  messages.appendChild(div);
+
+  messages.scrollTop = messages.scrollHeight;
 }
 </script>
 
