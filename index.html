@@ -8,21 +8,24 @@
 <style>
 body { margin:0; font-family:Arial; background:#0b1f26; }
 
+/* البداية */
 #start {
   height:100vh; display:flex; justify-content:center; align-items:center;
 }
-.start-box {
-  width:90%; max-width:350px; background:white; padding:20px;
+.box {
+  width:90%; max-width:350px; background:#fff; padding:20px;
   border-radius:20px; text-align:center;
 }
-.start-box input { width:100%; padding:10px; margin-top:10px; }
+.box input { width:100%; padding:10px; margin-top:10px; }
 
+/* الهيدر */
 header {
   background:#202c33; color:white; padding:10px; text-align:center;
 }
 
+/* الرسائل */
 #messages {
-  height:calc(100vh - 130px);
+  height:calc(100vh - 120px);
   overflow:auto; padding:10px;
   display:flex; flex-direction:column;
 }
@@ -39,15 +42,16 @@ header {
 
 .time { font-size:10px; opacity:.6; display:block; text-align:right; }
 
+/* الكتابة */
 .input-box {
   position:fixed; bottom:0; width:100%; display:flex;
   padding:10px; background:#202c33;
 }
 .input-box input {
-  flex:1; padding:10px; border-radius:20px;
+  flex:1; padding:10px; border-radius:20px; border:none;
 }
 .input-box button {
-  margin-left:10px; border:none; background:#25D366;
+  margin-left:10px; background:#25D366; border:none;
   border-radius:50%; width:45px; height:45px; color:white;
 }
 </style>
@@ -56,11 +60,11 @@ header {
 <body>
 
 <div id="start">
-  <div class="start-box">
+  <div class="box">
     <h2>Chat</h2>
     <input id="name" placeholder="اسمك">
     <input type="file" id="avatarInput">
-    <button onclick="createRoom()">إنشاء غرفة</button>
+    <button id="createBtn">إنشاء غرفة</button>
   </div>
 </div>
 
@@ -69,7 +73,7 @@ header {
 
 <div class="input-box" id="chatBox" style="display:none;">
   <input id="msgInput">
-  <button onclick="sendMsg()">➤</button>
+  <button id="sendBtn">➤</button>
 </div>
 
 <script type="module">
@@ -82,130 +86,145 @@ import {
   set, onDisconnect, onValue, update
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
+/* Firebase */
 const app = initializeApp({
-  apiKey:"AIzaSy...",
+  apiKey:"AIzaSyCoQGwJhAaQFKbD8S7TiyjhFelDSVknwIY",
   authDomain:"text-3da14.firebaseapp.com",
   databaseURL:"https://text-3da14-default-rtdb.firebaseio.com/",
   projectId:"text-3da14"
 });
-
 const db = getDatabase(app);
 
+/* عناصر */
+const startDiv = document.getElementById("start");
+const chatBox = document.getElementById("chatBox");
+const header = document.getElementById("header");
+const messages = document.getElementById("messages");
+const msgInput = document.getElementById("msgInput");
+const nameInput = document.getElementById("name");
+const createBtn = document.getElementById("createBtn");
+const sendBtn = document.getElementById("sendBtn");
+const avatarInput = document.getElementById("avatarInput");
+
+/* متغيرات */
 let room="", name="", avatar="";
 
 /* صورة */
 avatarInput.onchange = e=>{
-  let r=new FileReader();
-  r.onload=()=>avatar=r.result;
-  r.readAsDataURL(e.target.files[0]);
+  const reader = new FileReader();
+  reader.onload = ()=> avatar = reader.result;
+  reader.readAsDataURL(e.target.files[0]);
 };
 
-/* إنشاء */
-window.createRoom=()=>{
-  name=nameInput.value;
-  if(!name)return alert("اسمك");
+/* إنشاء غرفة */
+createBtn.onclick = ()=>{
+  name = nameInput.value;
+  if(!name) return alert("اكتب اسمك");
 
-  room=Math.floor(Math.random()*10000);
+  room = Math.floor(Math.random()*10000);
 
-  let link=location.origin+"?room="+room;
+  const link = location.origin + location.pathname + "?room=" + room;
 
   navigator.clipboard.writeText(link).catch(()=>{});
-  alert("لينك اتنسخ 🔥");
+  alert("تم نسخ لينك الدعوة 🔥");
 
-  start();
+  startChat();
 };
 
-/* من لينك */
-let p=new URLSearchParams(location.search);
-if(p.get("room")){
-  room=p.get("room");
-  name=prompt("اسمك");
-  start();
+/* دخول من لينك */
+const params = new URLSearchParams(location.search);
+if(params.get("room")){
+  room = params.get("room");
+  name = prompt("اكتب اسمك");
+  startChat();
 }
 
 /* تشغيل */
-function start(){
-  start.style.display="none";
+function startChat(){
+  startDiv.style.display="none";
   chatBox.style.display="flex";
   header.style.display="block";
 
-  /* status */
-  let s=ref(db,"status/"+room+"/"+name);
-  set(s,{state:"online",last:Date.now()});
-  onDisconnect(s).set({state:"offline",last:Date.now()});
+  /* Online */
+  const statusRef = ref(db,"status/"+room+"/"+name);
+  set(statusRef,{state:"online",last:Date.now()});
+  onDisconnect(statusRef).set({state:"offline",last:Date.now()});
 
   /* header */
   onValue(ref(db,"status/"+room),(snap)=>{
-    let d=snap.val(), online=[];
-    for(let u in d){
-      if(d[u].state=="online") online.push(u);
+    let data=snap.val(), online=[];
+    for(let u in data){
+      if(data[u].state==="online") online.push(u);
     }
-    header.innerText=online.join(", ")||"offline";
+    header.innerText = online.join(", ") || "offline";
   });
 
   /* typing */
-  msgInput.oninput=()=>{
+  msgInput.oninput = ()=>{
     set(ref(db,"typing/"+room+"/"+name),true);
-    setTimeout(()=>set(ref(db,"typing/"+room+"/"+name),false),2000);
+    setTimeout(()=> set(ref(db,"typing/"+room+"/"+name),false),2000);
   };
 
   onValue(ref(db,"typing/"+room),(snap)=>{
     let d=snap.val();
     for(let u in d){
-      if(d[u] && u!=name){
-        header.innerText=u+" يكتب...";
+      if(d[u] && u!==name){
+        header.innerText = u+" يكتب...";
       }
     }
   });
 
-  /* messages */
+  /* رسائل */
   onChildAdded(ref(db,"rooms/"+room),(snap)=>{
     let m=snap.val();
 
-    if(m.name!=name && !m.seen){
+    if(m.name!==name && !m.seen){
       update(ref(db,"rooms/"+room+"/"+snap.key),{seen:true});
     }
 
-    let div=document.createElement("div");
-    div.className="msg "+(m.name==name?"me":"other");
+    const div=document.createElement("div");
+    div.className="msg "+(m.name===name?"me":"other");
 
-    let t=new Date(m.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-    let seen=m.seen?"✔✔":"✔";
+    const t=new Date(m.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+    const seen = m.seen?"✔✔":"✔";
 
     div.innerHTML=`
       <div style="display:flex;gap:5px;">
         ${m.avatar?`<img src="${m.avatar}" width="30" style="border-radius:50%">`:""}
         <div class="bubble">
           <p>${m.text}</p>
-          <span class="time">${t} ${m.name==name?seen:""}</span>
+          <span class="time">${t} ${m.name===name?seen:""}</span>
         </div>
       </div>
     `;
 
     messages.appendChild(div);
-    messages.scrollTop=messages.scrollHeight;
+    messages.scrollTop = messages.scrollHeight;
 
-    /* notification */
-    if(m.name!=name && Notification.permission=="granted"){
+    /* إشعار */
+    if(m.name!==name && Notification.permission==="granted"){
       new Notification(m.name,{body:m.text});
     }
   });
 }
 
 /* إرسال */
-window.sendMsg=()=>{
-  if(!msgInput.value)return;
+sendBtn.onclick = ()=>{
+  if(!msgInput.value) return;
 
   push(ref(db,"rooms/"+room),{
-    name,text:msgInput.value,
-    avatar,time:Date.now(),seen:false
+    name:name,
+    text:msgInput.value,
+    avatar:avatar,
+    time:Date.now(),
+    seen:false
   });
 
   msgInput.value="";
 };
 
 /* إشعارات */
-if(Notification.permission!="granted"){
+if(Notification.permission!=="granted"){
   Notification.requestPermission();
 }
 </script>
