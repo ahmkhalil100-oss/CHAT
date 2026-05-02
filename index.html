@@ -3,83 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat</title>
+<title>Chat App</title>
 
 <style>
 body {
-  margin: 0;
+  margin:0;
   font-family: Arial;
-  background: #0b1f23;
-  color: white;
+  background:#0b1f22;
+  color:white;
 }
 
-/* صفحات */
-.page {
-  display: none;
-  height: 100vh;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-}
-
-.active {
-  display: flex;
+.container {
+  padding:20px;
+  text-align:center;
 }
 
 input {
-  padding: 12px;
-  margin: 8px;
-  border-radius: 10px;
-  border: none;
-  width: 80%;
+  width:90%;
+  padding:15px;
+  margin:10px 0;
+  border:none;
+  border-radius:25px;
+  font-size:16px;
 }
 
 button {
-  padding: 12px;
-  margin: 8px;
-  border-radius: 10px;
-  border: none;
-  background: #25D366;
-  color: white;
-  font-weight: bold;
+  padding:12px 25px;
+  border:none;
+  border-radius:25px;
+  background:#25D366;
+  color:white;
+  font-size:16px;
 }
 
-/* الشات */
-#chatPage {
-  display: none;
-  flex-direction: column;
-  height: 100vh;
+#chat {
+  display:none;
+  height:100vh;
+  flex-direction:column;
 }
 
 #messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
+  flex:1;
+  overflow-y:auto;
+  padding:10px;
 }
 
 .msg {
-  background: #1f2c34;
-  padding: 10px;
-  border-radius: 12px;
-  margin: 5px;
-  max-width: 70%;
+  background:#202c33;
+  padding:10px;
+  border-radius:15px;
+  margin:5px;
+  width:fit-content;
 }
 
 .me {
-  background: #25D366;
-  margin-left: auto;
+  background:#25D366;
+  margin-left:auto;
 }
 
-/* ارسال */
-#sendBox {
-  display: flex;
-  padding: 10px;
-  background: #111;
+.bottom {
+  display:flex;
+  padding:10px;
 }
 
-#sendBox input {
-  flex: 1;
-  margin: 0;
+.bottom input {
+  flex:1;
 }
 
 </style>
@@ -87,134 +75,114 @@ button {
 
 <body>
 
-<!-- تسجيل -->
-<div id="authPage" class="page active">
-  <h2>تسجيل / دخول</h2>
-  <input id="email" placeholder="الايميل">
-  <input id="password" type="password" placeholder="الباسورد">
-  <button onclick="register()">إنشاء حساب</button>
-  <button onclick="login()">تسجيل دخول</button>
+<!-- 🔐 تسجيل الدخول -->
+<div class="container" id="auth">
+  <h2>تسجيل الدخول</h2>
+  <input type="email" id="email" placeholder="الايميل">
+  <input type="password" id="pass" placeholder="الباسورد">
+  <br>
+  <button onclick="login()">دخول</button>
+  <button onclick="signup()">إنشاء حساب</button>
 </div>
 
-<!-- الغرف -->
-<div id="roomPage" class="page">
+<!-- 🚪 دخول الغرفة -->
+<div class="container" id="room" style="display:none;">
   <h2>ادخل الغرفة</h2>
-  <input id="roomInput" placeholder="كود الغرفة">
-  <button onclick="enterRoom()">دخول</button>
+  <input id="roomCode" placeholder="كود الغرفة">
+  <br>
+  <button onclick="joinRoom()">دخول</button>
 </div>
 
-<!-- الشات -->
-<div id="chatPage">
-  <div style="padding:10px;background:#111;display:flex;justify-content:space-between">
-    <span>Room: <span id="roomId"></span></span>
-    <button onclick="back()">رجوع</button>
-  </div>
-
+<!-- 💬 الشات -->
+<div id="chat">
   <div id="messages"></div>
 
-  <div id="sendBox">
-    <input id="msgInput" placeholder="اكتب رسالة...">
-    <button onclick="sendMsg()">➤</button>
+  <div class="bottom">
+    <input id="msg" placeholder="اكتب رسالة...">
+    <button onclick="send()">➤</button>
   </div>
 </div>
 
+<!-- Firebase -->
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-import {
-  getDatabase,
-  ref,
-  push,
-  onChildAdded
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-/* 🔥 بياناتك */
 const firebaseConfig = {
   apiKey: "AIzaSyCoQGwJhAaQFKbD8S7TiyjhFelDSVknwIY",
   authDomain: "text-3da14.firebaseapp.com",
-  databaseURL: "https://text-3da14-default-rtdb.firebaseio.com/",
-  projectId: "text-3da14"
+  databaseURL: "https://text-3da14-default-rtdb.firebaseio.com",
+  projectId: "text-3da14",
+  storageBucket: "text-3da14.firebasestorage.app",
+  messagingSenderId: "525716174257",
+  appId: "1:525716174257:web:38cbd81b462f894eab7990"
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
+const auth = getAuth();
+const db = getDatabase();
 
 let currentRoom = "";
-let listener = null;
+let user = "";
 
-/* صفحات */
-function show(page) {
-  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  document.getElementById(page).classList.add("active");
-}
+window.signup = () => {
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("pass").value;
 
-/* تسجيل */
-window.register = function () {
-  createUserWithEmailAndPassword(auth, email.value, password.value)
-    .then(() => alert("تم إنشاء الحساب"))
-    .catch(e => alert(e.message));
+  createUserWithEmailAndPassword(auth, email, pass)
+    .then(()=>{
+      alert("تم إنشاء الحساب");
+    })
+    .catch(e=>alert(e.message));
 };
 
-/* دخول */
-window.login = function () {
-  signInWithEmailAndPassword(auth, email.value, password.value)
-    .then(() => show("roomPage"))
-    .catch(e => alert(e.message));
+window.login = () => {
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("pass").value;
+
+  signInWithEmailAndPassword(auth, email, pass)
+    .then(()=>{
+      user = email;
+      document.getElementById("auth").style.display="none";
+      document.getElementById("room").style.display="block";
+    })
+    .catch(e=>alert(e.message));
 };
 
-/* رجوع */
-window.back = function () {
-  show("roomPage");
-  messages.innerHTML = "";
-};
+window.joinRoom = () => {
+  currentRoom = document.getElementById("roomCode").value;
 
-/* دخول غرفة */
-window.enterRoom = function () {
-  if (!roomInput.value) return alert("اكتب كود");
+  if(!currentRoom) return alert("اكتب كود");
 
-  currentRoom = roomInput.value;
-  document.getElementById("roomId").innerText = currentRoom;
-
-  show("chatPage");
+  document.getElementById("room").style.display="none";
+  document.getElementById("chat").style.display="flex";
 
   const messagesRef = ref(db, "rooms/" + currentRoom);
 
-  messages.innerHTML = "";
-
-  onChildAdded(messagesRef, snap => {
-    const msg = snap.val();
+  onChildAdded(messagesRef, (data)=>{
+    const msg = data.val();
 
     const div = document.createElement("div");
-    div.className = "msg";
+    div.className = "msg " + (msg.user===user ? "me":"");
+    div.innerText = msg.user + ": " + msg.text;
 
-    if (msg.uid === auth.currentUser.uid) {
-      div.classList.add("me");
-    }
-
-    div.innerText = msg.text;
-
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
+    document.getElementById("messages").appendChild(div);
   });
 };
 
-/* ارسال */
-window.sendMsg = function () {
-  if (!msgInput.value) return;
+window.send = () => {
+  const text = document.getElementById("msg").value;
+
+  if(!text) return;
 
   push(ref(db, "rooms/" + currentRoom), {
-    text: msgInput.value,
-    uid: auth.currentUser.uid
+    user:user,
+    text:text
   });
 
-  msgInput.value = "";
+  document.getElementById("msg").value="";
 };
 
 </script>
